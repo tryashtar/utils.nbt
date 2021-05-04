@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="**/desktop.ini" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\fNbt\fNbt\fNbt.csproj" />
+    <ProjectReference Include="..\Utility\TryashtarUtils.Utility.csproj" />
+  </ItemGroup>
+
+</Project>
