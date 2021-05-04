@@ -242,7 +242,7 @@ namespace TryashtarUtils.Nbt
             return null;
         }
 
-        private static sbyte ParseByte(string value)
+        public static sbyte ParseByte(string value)
         {
             if (value.Equals("true", StringComparison.OrdinalIgnoreCase))
                 return 1;
