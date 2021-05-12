@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using fNbt;
 using TryashtarUtils.Utility;
+using System.Globalization;
 
 namespace TryashtarUtils.Nbt
 {
@@ -201,7 +202,7 @@ namespace TryashtarUtils.Nbt
             {
                 string sub = str[0..^1];
                 if (FLOAT_PATTERN.IsMatch(str))
-                    return new NbtFloat(float.Parse(sub, System.Globalization.NumberStyles.Float));
+                    return new NbtFloat(float.Parse(sub, NumberStyles.Float, CultureInfo.InvariantCulture));
                 if (BYTE_PATTERN.IsMatch(str))
                     return new NbtByte((byte)sbyte.Parse(sub));
                 if (LONG_PATTERN.IsMatch(str))
@@ -211,9 +212,9 @@ namespace TryashtarUtils.Nbt
                 if (INT_PATTERN.IsMatch(str))
                     return new NbtInt(int.Parse(str));
                 if (DOUBLE_PATTERN.IsMatch(str))
-                    return new NbtDouble(double.Parse(sub, System.Globalization.NumberStyles.Float));
+                    return new NbtDouble(double.Parse(sub, NumberStyles.Float, CultureInfo.InvariantCulture));
                 if (DOUBLE_PATTERN_NOSUFFIX.IsMatch(str))
-                    return new NbtDouble(double.Parse(str, System.Globalization.NumberStyles.Float));
+                    return new NbtDouble(double.Parse(str, NumberStyles.Float, CultureInfo.InvariantCulture));
                 var special = SpecialCase(str);
                 if (special != null)
                     return special;
