@@ -265,7 +265,7 @@ namespace TryashtarUtils.Nbt
             if (should_quote(str))
                 return QuoteAndEscape(str, mode, newlines);
             else
-                return str.Replace("\n", newlines.Handle());
+                return str?.Replace("\n", newlines.Handle());
         }
 
         public static string GetName(NbtTag tag, SnbtOptions options)
