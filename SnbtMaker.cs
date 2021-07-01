@@ -17,7 +17,7 @@ namespace TryashtarUtils.Nbt
         public QuoteMode StringQuoteMode;
         public bool NumberSuffixes;
         public bool ArrayPrefixes;
-        public bool EscapeNewlines;
+        public INewlineHandler NewlineHandling;
 
         public enum QuoteMode
         {
@@ -26,15 +26,48 @@ namespace TryashtarUtils.Nbt
             SingleQuotes
         }
 
+        public interface INewlineHandler
+        {
+            string Handle();
+        }
+
+        public class IgnoreHandler : INewlineHandler
+        {
+            public static readonly IgnoreHandler Instance = new();
+            public string Handle() => Environment.NewLine;
+        }
+
+        public class EscapeHandler : INewlineHandler
+        {
+            public static readonly EscapeHandler Instance = new();
+            public string Handle() => Snbt.STRING_ESCAPE + "n";
+        }
+
+        public class ReplaceHandler : INewlineHandler
+        {
+            public readonly string Replacement;
+            public ReplaceHandler(string replacement)
+            {
+                Replacement = replacement;
+            }
+            public string Handle() => Replacement;
+        }
+
         public SnbtOptions Expanded()
         {
             this.Minified = false;
             return this;
         }
 
+        public SnbtOptions WithHandler(INewlineHandler handler)
+        {
+            this.NewlineHandling = handler;
+            return this;
+        }
+
         private static readonly Regex StringRegex = new Regex("^[A-Za-z0-9._+-]+$", RegexOptions.Compiled);
 
-        public static SnbtOptions Default => new SnbtOptions
+        public static SnbtOptions Default => new()
         {
             Minified = true,
             ShouldQuoteKeys = x => !StringRegex.IsMatch(x),
@@ -43,11 +76,11 @@ namespace TryashtarUtils.Nbt
             StringQuoteMode = QuoteMode.Automatic,
             NumberSuffixes = true,
             ArrayPrefixes = true,
-            EscapeNewlines = true
+            NewlineHandling = EscapeHandler.Instance
         };
         public static SnbtOptions DefaultExpanded => Default.Expanded();
 
-        public static SnbtOptions JsonLike => new SnbtOptions
+        public static SnbtOptions JsonLike => new()
         {
             Minified = true,
             ShouldQuoteKeys = x => true,
@@ -56,19 +89,21 @@ namespace TryashtarUtils.Nbt
             StringQuoteMode = QuoteMode.DoubleQuotes,
             NumberSuffixes = false,
             ArrayPrefixes = false,
-            EscapeNewlines = true
+            NewlineHandling = EscapeHandler.Instance
         };
         public static SnbtOptions JsonLikeExpanded => JsonLike.Expanded();
 
-        public static SnbtOptions Preview => new SnbtOptions
+        public static SnbtOptions Preview => new()
         {
             Minified = true,
             ShouldQuoteKeys = x => false,
             ShouldQuoteStrings = x => false,
             NumberSuffixes = false,
             ArrayPrefixes = false,
-            EscapeNewlines = false
+            NewlineHandling = new ReplaceHandler("⏎")
         };
+
+        public static SnbtOptions MultilinePreview => Preview.WithHandler(IgnoreHandler.Instance);
     }
     public static class Snbt
     {
@@ -164,7 +199,7 @@ namespace TryashtarUtils.Nbt
         }
         public static string ToSnbt(this NbtString tag, SnbtOptions options)
         {
-            return QuoteIfRequested(tag.Value, options.ShouldQuoteStrings, options.StringQuoteMode, options.EscapeNewlines);
+            return QuoteIfRequested(tag.Value, options.ShouldQuoteStrings, options.StringQuoteMode, options.NewlineHandling);
         }
 
         public static string ToSnbt(this NbtByteArray tag, SnbtOptions options)
@@ -225,17 +260,17 @@ namespace TryashtarUtils.Nbt
             return s.ToString();
         }
 
-        private static string QuoteIfRequested(string str, Predicate<string> should_quote, SnbtOptions.QuoteMode mode, bool escape_newlines)
+        private static string QuoteIfRequested(string str, Predicate<string> should_quote, SnbtOptions.QuoteMode mode, SnbtOptions.INewlineHandler newlines)
         {
             if (should_quote(str))
-                return QuoteAndEscape(str, mode, escape_newlines);
+                return QuoteAndEscape(str, mode, newlines);
             else
-                return str;
+                return str.Replace("\n", newlines.Handle());
         }
 
-        private static string GetName(NbtTag tag, SnbtOptions options)
+        public static string GetName(NbtTag tag, SnbtOptions options)
         {
-            return QuoteIfRequested(tag.Name, options.ShouldQuoteKeys, options.KeyQuoteMode, options.EscapeNewlines);
+            return QuoteIfRequested(tag.Name, options.ShouldQuoteKeys, options.KeyQuoteMode, options.NewlineHandling);
         }
 
         private static string GetNameBeforeValue(NbtTag tag, SnbtOptions options)
@@ -246,7 +281,7 @@ namespace TryashtarUtils.Nbt
         }
 
         // adapted directly from minecraft's (decompiled) source
-        private static string QuoteAndEscape(string input, SnbtOptions.QuoteMode mode, bool escape_newlines)
+        private static string QuoteAndEscape(string input, SnbtOptions.QuoteMode mode, SnbtOptions.INewlineHandler newlines)
         {
             const char PLACEHOLDER_QUOTE = '\0';
             var builder = new StringBuilder(PLACEHOLDER_QUOTE.ToString()); // dummy value to be replaced at end
@@ -269,8 +304,8 @@ namespace TryashtarUtils.Nbt
                     if (c == preferred_quote)
                         builder.Append(STRING_ESCAPE);
                 }
-                if (escape_newlines && c == '\n')
-                    builder.Append(STRING_ESCAPE + "n");
+                if (c == '\n')
+                    builder.Append(newlines.Handle());
                 else
                     builder.Append(c);
             }
