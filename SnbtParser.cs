@@ -232,24 +232,38 @@ namespace TryashtarUtils.Nbt
                 return null;
             if (text[^1] == Snbt.FLOAT_SUFFIX)
             {
-                try { return new NbtFloat(DataUtils.ParseFloat(text[0..^1])); } catch { }
+                var special_float = DataUtils.TryParseSpecialFloat(text[0..^1]);
+                if (special_float != null)
+                    return new NbtFloat(special_float.Value);
             }
             if (text[^1] == Snbt.DOUBLE_SUFFIX)
             {
-                try { return new NbtDouble(DataUtils.ParseDouble(text[0..^1])); } catch { }
+                var special_double = DataUtils.TryParseSpecialFloat(text[0..^1]);
+                if (special_double != null)
+                    return new NbtDouble(special_double.Value);
             }
-            try { return new NbtDouble(DataUtils.ParseDouble(text)); } catch { }
-            try { return new NbtByte((byte)ParseByte(text)); } catch { }
+            var special_double2 = DataUtils.TryParseSpecialDouble(text);
+            if (special_double2 != null)
+                return new NbtDouble(special_double2.Value);
+            var special_byte = TryParseSpecialByte(text);
+            if (special_byte != null)
+                return new NbtByte((byte)special_byte);
             return null;
         }
 
-        public static sbyte ParseByte(string value)
+        private static sbyte? TryParseSpecialByte(string value)
         {
             if (value.Equals("true", StringComparison.OrdinalIgnoreCase))
                 return 1;
             if (value.Equals("false", StringComparison.OrdinalIgnoreCase))
                 return 0;
-            return sbyte.Parse(value);
+            return null;
+        }
+
+        public static sbyte ParseByte(string value)
+        {
+            return TryParseSpecialByte(value) ??
+                sbyte.Parse(value);
         }
 
         private void Expect(char c)
