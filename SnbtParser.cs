@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 using fNbt;
 using TryashtarUtils.Utility;
@@ -28,9 +27,16 @@ namespace TryashtarUtils.Nbt
 
         public static NbtTag Parse(string snbt, bool named)
         {
-            var parser = new SnbtParser(snbt);
+            snbt = snbt.TrimStart();
+            return Parse(new StringReader(snbt), named, false);
+        }
+
+        internal static NbtTag Parse(StringReader reader, bool named, bool can_trail)
+        {
+            var parser = new SnbtParser(reader);
             var value = named ? parser.ReadNamedValue() : parser.ReadValue();
-            parser.Finish();
+            if (!can_trail)
+                parser.Finish();
             return value;
         }
 
@@ -48,10 +54,9 @@ namespace TryashtarUtils.Nbt
             }
         }
 
-        private SnbtParser(string snbt)
+        private SnbtParser(StringReader reader)
         {
-            snbt = snbt.TrimStart();
-            Reader = new StringReader(snbt);
+            Reader = reader;
         }
 
         private NbtTag ReadValue()
@@ -270,138 +275,6 @@ namespace TryashtarUtils.Nbt
         {
             Reader.SkipWhitespace();
             Reader.Expect(c);
-        }
-    }
-
-    public class StringReader
-    {
-        private const char ESCAPE = '\\';
-        private const char DOUBLE_QUOTE = '"';
-        private const char SINGLE_QUOTE = '\'';
-        private readonly string String;
-        public int Cursor { get; private set; }
-
-        public StringReader(string str)
-        {
-            String = str;
-        }
-
-        public static bool IsQuote(char c)
-        {
-            return c == DOUBLE_QUOTE || c == SINGLE_QUOTE;
-        }
-
-        public static bool UnquotedAllowed(char c)
-        {
-            return c >= '0' && c <= '9'
-                || c >= 'A' && c <= 'Z'
-                || c >= 'a' && c <= 'z'
-                || c == '_' || c == '-'
-                || c == '.' || c == '+'
-                || c == '∞';
-        }
-
-        public bool CanRead(int length = 1)
-        {
-            return Cursor + length <= String.Length;
-        }
-
-        public char Peek(int offset = 0)
-        {
-            return String[Cursor + offset];
-        }
-
-        public char Read()
-        {
-            char result = Peek();
-            Cursor++;
-            return result;
-        }
-
-        public string ReadString()
-        {
-            if (!CanRead())
-                return String.Empty;
-            char next = Peek();
-            if (IsQuote(next))
-            {
-                Read();
-                return ReadStringUntil(next);
-            }
-            return ReadUnquotedString();
-        }
-
-        public string ReadStringUntil(char end)
-        {
-            var result = new StringBuilder();
-            bool escaped = false;
-            while (CanRead())
-            {
-                char c = Read();
-                if (escaped)
-                {
-                    if (c == end || c == ESCAPE)
-                    {
-                        result.Append(c);
-                        escaped = false;
-                    }
-                    else if (c == 'n')
-                    {
-                        result.Append('\n');
-                        escaped = false;
-                    }
-                    else
-                    {
-                        Cursor--;
-                        throw new FormatException($"Tried to escape '{c}' at position {Cursor}, which is not allowed");
-                    }
-                }
-                else if (c == ESCAPE)
-                    escaped = true;
-                else if (c == end)
-                    return result.ToString();
-                else
-                    result.Append(c);
-            }
-            throw new FormatException($"Expected the string to end with '{end}', but reached end of data");
-        }
-
-        public string ReadUnquotedString()
-        {
-            int start = Cursor;
-            while (CanRead() && UnquotedAllowed(Peek()))
-            {
-                Read();
-            }
-            return String.Substring(start, Cursor - start);
-        }
-
-        public string ReadQuotedString()
-        {
-            if (!CanRead())
-                return String.Empty;
-            char next = Peek();
-            if (!IsQuote(next))
-                throw new FormatException($"Expected the string to at position {Cursor} to be quoted, but got '{next}'");
-            Read();
-            return ReadStringUntil(next);
-        }
-
-        public void SkipWhitespace()
-        {
-            while (CanRead() && Char.IsWhiteSpace(Peek()))
-            {
-                Read();
-            }
-        }
-
-        public void Expect(char c)
-        {
-            if (!CanRead())
-                throw new FormatException($"Expected '{c}' at position {Cursor}, but reached end of data");
-            char read = Read();
-            if (read != c)
-                throw new FormatException($"Expected '{c}' at position {Cursor}, but got '{read}'");
         }
     }
 }
