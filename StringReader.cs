@@ -124,9 +124,9 @@ namespace TryashtarUtils.Nbt
             {
                 Read();
             }
-            string number = String.Substring(start, Cursor);
+            string number = String[start..Cursor];
             if (number.Length == 0)
-                throw new FormatException($"Couldn't read any numeric characters starting at position {number}");
+                throw new FormatException($"Couldn't read any numeric characters starting at position {start}");
             return int.Parse(number);
         }
 

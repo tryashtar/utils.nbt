@@ -29,9 +29,12 @@ namespace TryashtarUtils.Nbt
             {
                 var node = NbtPathNode.Parse(reader);
                 nodes.Add(node);
-                char c = reader.Peek();
-                if (reader.CanRead() && c is not (' ' or '[' or '{'))
-                    reader.Expect('.');
+                if (reader.CanRead())
+                {
+                    char c = reader.Peek();
+                    if (c is not (' ' or '[' or '{'))
+                        reader.Expect('.');
+                }
             }
             return new NbtPath(path, nodes.ToArray());
         }
@@ -119,7 +122,7 @@ namespace TryashtarUtils.Nbt
             {
                 reader.Read();
             }
-            string name = reader.String.Substring(start, reader.Cursor);
+            string name = reader.String[start..reader.Cursor];
             if (name.Length == 0)
                 throw new FormatException($"Couldn't read unquoted name at position {start}");
             return name;

@@ -51,6 +51,10 @@ namespace TryashtarUtils.Nbt
                 }
                 return true;
             }
+            if (tag is NbtValueTag value && OriginalTemplate is NbtValueTag original_value)
+                return value.EqualsValue(original_value);
+            if (tag is NbtArrayTag array && OriginalTemplate is NbtArrayTag original_array)
+                return array.EqualsArray(original_array);
             return tag.Equals(OriginalTemplate);
         }
     }
