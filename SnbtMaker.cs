@@ -11,6 +11,7 @@ namespace TryashtarUtils.Nbt
     public class SnbtOptions
     {
         public bool Minified;
+        public bool IsJsonLike;
         public Predicate<string> ShouldQuoteKeys;
         public Predicate<string> ShouldQuoteStrings;
         public QuoteMode KeyQuoteMode;
@@ -65,7 +66,7 @@ namespace TryashtarUtils.Nbt
             return this;
         }
 
-        private static readonly Regex StringRegex = new Regex("^[A-Za-z0-9._+-]+$", RegexOptions.Compiled);
+        private static readonly Regex StringRegex = new("^[A-Za-z0-9._+-]+$", RegexOptions.Compiled);
 
         public static SnbtOptions Default => new()
         {
@@ -83,6 +84,7 @@ namespace TryashtarUtils.Nbt
         public static SnbtOptions JsonLike => new()
         {
             Minified = true,
+            IsJsonLike = true,
             ShouldQuoteKeys = x => true,
             ShouldQuoteStrings = x => x != "null",
             KeyQuoteMode = QuoteMode.DoubleQuotes,
@@ -220,7 +222,7 @@ namespace TryashtarUtils.Nbt
         public static string ToSnbt(this NbtList tag, SnbtOptions options)
         {
             if (options.Minified)
-                return ListToString("", x => x.ToSnbt(options, include_name: false), tag, options);
+                return ListToString("", x => x.ToSnbt(options, include_name: false), tag.Tags, options);
             else
             {
                 var sb = new StringBuilder();
@@ -235,7 +237,7 @@ namespace TryashtarUtils.Nbt
             if (options.Minified)
             {
                 sb.Append(COMPOUND_OPEN);
-                sb.Append(String.Join(VALUE_SEPARATOR.ToString(), tag.Select(x => x.ToSnbt(options, include_name: true)).ToArray()));
+                sb.Append(String.Join(VALUE_SEPARATOR.ToString(), tag.Tags.Select(x => x.ToSnbt(options, include_name: true)).ToArray()));
                 sb.Append(COMPOUND_CLOSE);
             }
             else
@@ -368,7 +370,7 @@ namespace TryashtarUtils.Nbt
                 sb.Append(GetNameBeforeValue(tag, options));
             bool compressed = ShouldCompressListOf(tag.ListType);
             if (compressed)
-                sb.Append(ListToString("", x => x.ToSnbt(options, include_name: false), tag, options));
+                sb.Append(ListToString("", x => x.ToSnbt(options, include_name: false), tag.Tags, options));
             else
             {
                 sb.Append(LIST_OPEN);
@@ -392,18 +394,16 @@ namespace TryashtarUtils.Nbt
         // when a multiline list contains this type, should it keep all the values on one line anyway?
         private static bool ShouldCompressListOf(NbtTagType type)
         {
-            switch (type)
+            return type switch
             {
-                case NbtTagType.String:
-                case NbtTagType.List:
-                case NbtTagType.Compound:
-                case NbtTagType.IntArray:
-                case NbtTagType.ByteArray:
-                case NbtTagType.LongArray:
-                    return false;
-                default:
-                    return true;
-            }
+                NbtTagType.String or
+                NbtTagType.List or
+                NbtTagType.Compound or
+                NbtTagType.IntArray or
+                NbtTagType.ByteArray or
+                NbtTagType.LongArray => false,
+                _ => true,
+            };
         }
     }
 }
