@@ -14,7 +14,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <ProjectReference Include="..\fNbt\fNbt\fNbt.csproj" />
+    <ProjectReference Include="..\..\fNbt\fNbt\fNbt.csproj" />
     <ProjectReference Include="..\Utility\TryashtarUtils.Utility.csproj" />
   </ItemGroup>
 
