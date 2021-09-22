@@ -222,7 +222,7 @@ namespace TryashtarUtils.Nbt
         public static string ToSnbt(this NbtList tag, SnbtOptions options)
         {
             if (options.Minified)
-                return ListToString("", x => x.ToSnbt(options, include_name: false), tag.Tags, options);
+                return ListToString("", x => x.ToSnbt(options, include_name: false), tag, options);
             else
             {
                 var sb = new StringBuilder();
@@ -370,7 +370,7 @@ namespace TryashtarUtils.Nbt
                 sb.Append(GetNameBeforeValue(tag, options));
             bool compressed = ShouldCompressListOf(tag.ListType);
             if (compressed)
-                sb.Append(ListToString("", x => x.ToSnbt(options, include_name: false), tag.Tags, options));
+                sb.Append(ListToString("", x => x.ToSnbt(options, include_name: false), tag, options));
             else
             {
                 sb.Append(LIST_OPEN);
