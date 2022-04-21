@@ -18,6 +18,7 @@ namespace TryashtarUtils.Nbt
         public QuoteMode StringQuoteMode;
         public bool NumberSuffixes;
         public bool ArrayPrefixes;
+        public bool BytesAsBools;
         public INewlineHandler NewlineHandling;
 
         public enum QuoteMode
@@ -77,6 +78,7 @@ namespace TryashtarUtils.Nbt
             StringQuoteMode = QuoteMode.Automatic,
             NumberSuffixes = true,
             ArrayPrefixes = true,
+            BytesAsBools = false,
             NewlineHandling = EscapeHandler.Instance
         };
         public static SnbtOptions DefaultExpanded => Default.Expanded();
@@ -91,6 +93,7 @@ namespace TryashtarUtils.Nbt
             StringQuoteMode = QuoteMode.DoubleQuotes,
             NumberSuffixes = false,
             ArrayPrefixes = false,
+            BytesAsBools = true,
             NewlineHandling = EscapeHandler.Instance
         };
         public static SnbtOptions JsonLikeExpanded => JsonLike.Expanded();
@@ -169,7 +172,14 @@ namespace TryashtarUtils.Nbt
             return options.NumberSuffixes ? suffix.ToString() : String.Empty;
         }
 
-        public static string ToSnbt(this NbtByte tag, SnbtOptions options) => (sbyte)tag.Value + OptionalSuffix(options, BYTE_SUFFIX);
+        public static string ToSnbt(this NbtByte tag, SnbtOptions options)
+        {
+            if (options.BytesAsBools && tag.Value == 0)
+                return "false";
+            if (options.BytesAsBools && tag.Value == 1)
+                return "true";
+            return (sbyte)tag.Value + OptionalSuffix(options, BYTE_SUFFIX);
+        }
         public static string ToSnbt(this NbtShort tag, SnbtOptions options) => tag.Value + OptionalSuffix(options, SHORT_SUFFIX);
         public static string ToSnbt(this NbtInt tag, SnbtOptions options) => tag.Value.ToString();
         public static string ToSnbt(this NbtLong tag, SnbtOptions options) => tag.Value + OptionalSuffix(options, LONG_SUFFIX);
