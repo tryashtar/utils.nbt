@@ -179,7 +179,7 @@ namespace TryashtarUtils.Nbt
         {
             if (tag.Name == null)
                 return String.Empty;
-            return GetName(tag, options) + NAME_VALUE_SEPARATOR + (options.ShouldSpace(tag) ? String.Empty : VALUE_SPACING);
+            return GetName(tag, options) + NAME_VALUE_SEPARATOR + (options.ShouldSpace(tag) ? VALUE_SPACING : String.Empty);
         }
 
         // adapted directly from minecraft's (decompiled) source
@@ -230,7 +230,12 @@ namespace TryashtarUtils.Nbt
         // used for aligning indents for multiline compounds and lists
         private static void AddSnbt(NbtTag tag, SnbtOptions options, StringBuilder sb, int indent_level, bool include_name)
         {
-            if (tag is NbtCompound compound)
+            if (!options.ShouldIndent(tag))
+            {
+                AddIndents(sb, options.Indentation, indent_level);
+                sb.Append(tag.ToSnbt(options, include_name));
+            }
+            else if (tag is NbtCompound compound)
                 AddSnbtCompound(compound, options, sb, indent_level, include_name);
             else if (tag is NbtList list)
                 AddSnbtList(list, options, sb, indent_level, include_name);
