@@ -1,23 +1,27 @@
-﻿using System;
+using fNbt;
+using System;
 using System.Text.RegularExpressions;
 
 namespace TryashtarUtils.Nbt
 {
     public class SnbtOptions
     {
-        public bool Minified;
-        public bool IsJsonLike;
-        public Predicate<string> ShouldQuoteKeys;
-        public Predicate<string> ShouldQuoteStrings;
-        public QuoteMode KeyQuoteMode;
-        public QuoteMode StringQuoteMode;
-        public bool NumberSuffixes;
-        public bool ArrayPrefixes;
-        public INewlineHandler NewlineHandling;
+        public Predicate<NbtTag> ShouldIndent = x => false;
+        public Predicate<NbtTag> ShouldSpace = x => true;
+        public bool IsJsonLike = false;
+        public Predicate<string> ShouldQuoteKeys = x => !StringRegex.IsMatch(x);
+        public Predicate<string> ShouldQuoteStrings = x => true;
+        public QuoteMode KeyQuoteMode = QuoteMode.Automatic;
+        public QuoteMode StringQuoteMode = QuoteMode.Automatic;
+        public bool NumberSuffixes = true;
+        public bool ArrayPrefixes = true;
+        public INewlineHandler NewlineHandling = EscapeHandler.Instance;
+        public string Indentation = "    ";
 
         public SnbtOptions Expanded()
         {
-            this.Minified = false;
+            this.ShouldIndent = x => true;
+            this.ShouldSpace = x => true;
             return this;
         }
 
@@ -29,22 +33,13 @@ namespace TryashtarUtils.Nbt
 
         private static readonly Regex StringRegex = new("^[A-Za-z0-9._+-]+$", RegexOptions.Compiled);
 
-        public static SnbtOptions Default => new()
-        {
-            Minified = true,
-            ShouldQuoteKeys = x => !StringRegex.IsMatch(x),
-            ShouldQuoteStrings = x => true,
-            KeyQuoteMode = QuoteMode.Automatic,
-            StringQuoteMode = QuoteMode.Automatic,
-            NumberSuffixes = true,
-            ArrayPrefixes = true,
-            NewlineHandling = EscapeHandler.Instance
-        };
+        public static SnbtOptions Default => new();
         public static SnbtOptions DefaultExpanded => Default.Expanded();
 
         public static SnbtOptions JsonLike => new()
         {
-            Minified = true,
+            ShouldIndent = x => false,
+            ShouldSpace = x => false,
             IsJsonLike = true,
             ShouldQuoteKeys = x => true,
             ShouldQuoteStrings = x => x != "null",
@@ -58,7 +53,8 @@ namespace TryashtarUtils.Nbt
 
         public static SnbtOptions Preview => new()
         {
-            Minified = true,
+            ShouldIndent = x => false,
+            ShouldSpace = x => true,
             ShouldQuoteKeys = x => false,
             ShouldQuoteStrings = x => false,
             NumberSuffixes = false,

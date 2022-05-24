@@ -28,7 +28,6 @@ namespace TryashtarUtils.Nbt
         public const char STRING_PRIMARY_QUOTE = '"';
         public const char STRING_SECONDARY_QUOTE = '\'';
         public const string VALUE_SPACING = " ";
-        public const string INDENTATION = "    ";
 
         // convert a tag to its string form
         // expanded: for compounds and lists of non-numeric type, creates pretty indented structure. for all tags, causes spaces between values
@@ -106,27 +105,27 @@ namespace TryashtarUtils.Nbt
 
         public static string ToSnbt(this NbtByteArray tag, SnbtOptions options)
         {
-            return ListToString("" + BYTE_ARRAY_PREFIX + ARRAY_DELIMITER, x => ((sbyte)x).ToString() + (options.NumberSuffixes ? BYTE_SUFFIX.ToString() : String.Empty), tag.Value, options);
+            return ListToString(tag, "" + BYTE_ARRAY_PREFIX + ARRAY_DELIMITER, x => ((sbyte)x).ToString() + (options.NumberSuffixes ? BYTE_SUFFIX.ToString() : String.Empty), tag.Value, options);
         }
 
         public static string ToSnbt(this NbtIntArray tag, SnbtOptions options)
         {
-            return ListToString("" + INT_ARRAY_PREFIX + ARRAY_DELIMITER, x => x.ToString(), tag.Value, options);
+            return ListToString(tag, "" + INT_ARRAY_PREFIX + ARRAY_DELIMITER, x => x.ToString(), tag.Value, options);
         }
 
         public static string ToSnbt(this NbtLongArray tag, SnbtOptions options)
         {
-            return ListToString("" + LONG_ARRAY_PREFIX + ARRAY_DELIMITER, x => x.ToString() + (options.NumberSuffixes ? LONG_SUFFIX.ToString() : String.Empty), tag.Value, options);
+            return ListToString(tag, "" + LONG_ARRAY_PREFIX + ARRAY_DELIMITER, x => x.ToString() + (options.NumberSuffixes ? LONG_SUFFIX.ToString() : String.Empty), tag.Value, options);
         }
 
         public static string ToSnbt(this NbtList tag, SnbtOptions options)
         {
-            if (options.Minified)
-                return ListToString("", x => x.ToSnbt(options, include_name: false), tag.Tags, options);
+            if (!options.ShouldIndent(tag))
+                return ListToString(tag, "", x => x.ToSnbt(options, include_name: false), tag.Tags, options);
             else
             {
                 var sb = new StringBuilder();
-                AddSnbtList(tag, options, sb, INDENTATION, 0, false);
+                AddSnbtList(tag, options, sb, 0, false);
                 return sb.ToString();
             }
         }
@@ -134,27 +133,28 @@ namespace TryashtarUtils.Nbt
         public static string ToSnbt(this NbtCompound tag, SnbtOptions options)
         {
             var sb = new StringBuilder();
-            if (options.Minified)
+            if (!options.ShouldIndent(tag))
             {
                 sb.Append(COMPOUND_OPEN);
-                sb.Append(String.Join(VALUE_SEPARATOR.ToString(), tag.Tags.Select(x => x.ToSnbt(options, include_name: true)).ToArray()));
+                sb.Append(String.Join(VALUE_SEPARATOR + (options.ShouldSpace(tag) ? VALUE_SPACING : String.Empty), tag.Tags.Select(x => x.ToSnbt(options, include_name: true)).ToArray()));
                 sb.Append(COMPOUND_CLOSE);
             }
             else
-                AddSnbtCompound(tag, options, sb, INDENTATION, 0, false);
+                AddSnbtCompound(tag, options, sb, 0, false);
             return sb.ToString();
         }
 
         // shared technique for single-line arrays
         // (list, int array, byte array)
-        private static string ListToString<T>(string list_prefix, Func<T, string> function, IEnumerable<T> values, SnbtOptions options)
+        private static string ListToString<T>(NbtTag tag, string list_prefix, Func<T, string> function, IEnumerable<T> values, SnbtOptions options)
         {
             if (!options.ArrayPrefixes)
                 list_prefix = String.Empty;
+            bool should_space = options.ShouldSpace(tag);
             // spacing between values
-            string spacing = options.Minified ? String.Empty : VALUE_SPACING;
+            string spacing = should_space ? VALUE_SPACING : String.Empty;
             // spacing between list prefix and first value
-            string prefix_separator = !options.Minified && list_prefix.Length > 0 && values.Any() ? VALUE_SPACING : String.Empty;
+            string prefix_separator = should_space && list_prefix.Length > 0 && values.Any() ? VALUE_SPACING : String.Empty;
             var s = new StringBuilder(LIST_OPEN + list_prefix + prefix_separator);
             string contents = String.Join(VALUE_SEPARATOR + spacing, values.Select(x => function(x)));
             s.Append(contents);
@@ -179,7 +179,7 @@ namespace TryashtarUtils.Nbt
         {
             if (tag.Name == null)
                 return String.Empty;
-            return GetName(tag, options) + NAME_VALUE_SEPARATOR + (options.Minified ? String.Empty : VALUE_SPACING);
+            return GetName(tag, options) + NAME_VALUE_SEPARATOR + (options.ShouldSpace(tag) ? String.Empty : VALUE_SPACING);
         }
 
         // adapted directly from minecraft's (decompiled) source
@@ -228,22 +228,22 @@ namespace TryashtarUtils.Nbt
 
         // add contents of tag to stringbuilder
         // used for aligning indents for multiline compounds and lists
-        private static void AddSnbt(NbtTag tag, SnbtOptions options, StringBuilder sb, string indent_string, int indent_level, bool include_name)
+        private static void AddSnbt(NbtTag tag, SnbtOptions options, StringBuilder sb, int indent_level, bool include_name)
         {
             if (tag is NbtCompound compound)
-                AddSnbtCompound(compound, options, sb, indent_string, indent_level, include_name);
+                AddSnbtCompound(compound, options, sb, indent_level, include_name);
             else if (tag is NbtList list)
-                AddSnbtList(list, options, sb, indent_string, indent_level, include_name);
+                AddSnbtList(list, options, sb, indent_level, include_name);
             else
             {
-                AddIndents(sb, indent_string, indent_level);
+                AddIndents(sb, options.Indentation, indent_level);
                 sb.Append(tag.ToSnbt(options, include_name: include_name));
             }
         }
 
-        private static void AddSnbtCompound(NbtCompound tag, SnbtOptions options, StringBuilder sb, string indent_string, int indent_level, bool include_name)
+        private static void AddSnbtCompound(NbtCompound tag, SnbtOptions options, StringBuilder sb, int indent_level, bool include_name)
         {
-            AddIndents(sb, indent_string, indent_level);
+            AddIndents(sb, options.Indentation, indent_level);
             if (include_name)
                 sb.Append(GetNameBeforeValue(tag, options));
             sb.Append(COMPOUND_OPEN);
@@ -253,24 +253,24 @@ namespace TryashtarUtils.Nbt
                 var children = tag.Tags.ToArray();
                 for (int i = 0; i < children.Length; i++)
                 {
-                    AddSnbt(children[i], options, sb, indent_string, indent_level + 1, true);
+                    AddSnbt(children[i], options, sb, indent_level + 1, true);
                     if (i < children.Length - 1)
                         sb.Append(VALUE_SEPARATOR);
                     sb.Append(Environment.NewLine);
                 }
-                AddIndents(sb, indent_string, indent_level);
+                AddIndents(sb, options.Indentation, indent_level);
             }
             sb.Append('}');
         }
 
-        private static void AddSnbtList(NbtList tag, SnbtOptions options, StringBuilder sb, string indent_string, int indent_level, bool include_name)
+        private static void AddSnbtList(NbtList tag, SnbtOptions options, StringBuilder sb, int indent_level, bool include_name)
         {
-            AddIndents(sb, indent_string, indent_level);
+            AddIndents(sb, options.Indentation, indent_level);
             if (include_name)
                 sb.Append(GetNameBeforeValue(tag, options));
             bool compressed = ShouldCompressListOf(tag.ListType);
             if (compressed)
-                sb.Append(ListToString("", x => x.ToSnbt(options, include_name: false), tag.Tags, options));
+                sb.Append(ListToString(tag, "", x => x.ToSnbt(options, include_name: false), tag.Tags, options));
             else
             {
                 sb.Append(LIST_OPEN);
@@ -279,13 +279,12 @@ namespace TryashtarUtils.Nbt
                     sb.Append(Environment.NewLine);
                     for (int i = 0; i < tag.Count; i++)
                     {
-                        AddSnbt(((NbtContainerTag)tag)[i], options, sb, indent_string, indent_level + 1, false);
+                        AddSnbt(((NbtContainerTag)tag)[i], options, sb, indent_level + 1, false);
                         if (i < tag.Count - 1)
                             sb.Append(VALUE_SEPARATOR);
                         sb.Append(Environment.NewLine);
                     }
-                    AddIndents(sb, indent_string, indent_level);
-
+                    AddIndents(sb, options.Indentation, indent_level);
                 }
                 sb.Append(LIST_CLOSE);
             }
