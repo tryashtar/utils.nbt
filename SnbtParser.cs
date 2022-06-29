@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using fNbt;
 using TryashtarUtils.Utility;
 using System.Globalization;
+using System.IO;
 
 namespace TryashtarUtils.Nbt
 {
@@ -28,7 +29,12 @@ namespace TryashtarUtils.Nbt
         public static NbtTag Parse(string snbt, bool named)
         {
             snbt = snbt.TrimStart();
-            return Parse(new StringReader(snbt), named, false);
+            return Parse(new DirectStringReader(snbt), named, false);
+        }
+
+        public static NbtTag Parse(StringReader reader, bool named)
+        {
+            return Parse(reader, named, false);
         }
 
         internal static NbtTag Parse(StringReader reader, bool named, bool can_trail)

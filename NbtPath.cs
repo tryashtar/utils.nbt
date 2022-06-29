@@ -24,7 +24,7 @@ namespace TryashtarUtils.Nbt
         public static NbtPath Parse(string path)
         {
             var nodes = new List<NbtPathNode>();
-            var reader = new StringReader(path);
+            var reader = new DirectStringReader(path);
             while (reader.CanRead() && reader.Peek() != ' ')
             {
                 var node = NbtPathNode.Parse(reader);
@@ -117,12 +117,8 @@ namespace TryashtarUtils.Nbt
 
         private static string ReadUnquotedName(StringReader reader)
         {
-            int start = reader.Cursor;
-            while (reader.CanRead() && IsAllowedInUnquotedName(reader.Peek()))
-            {
-                reader.Read();
-            }
-            string name = reader.String[start..reader.Cursor];
+            long start = reader.Cursor;
+            string name = reader.ReadWhile(IsAllowedInUnquotedName);
             if (name.Length == 0)
                 throw new FormatException($"Couldn't read unquoted name at position {start}");
             return name;

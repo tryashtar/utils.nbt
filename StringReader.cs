@@ -1,20 +1,20 @@
 ﻿using System;
+using System.IO;
 using System.Text;
 
 namespace TryashtarUtils.Nbt
 {
-    public class StringReader
+    public abstract class StringReader
     {
-        private const char ESCAPE = '\\';
-        private const char DOUBLE_QUOTE = '"';
-        private const char SINGLE_QUOTE = '\'';
-        public readonly string String;
-        public int Cursor { get; private set; }
+        public const char ESCAPE = '\\';
+        public const char DOUBLE_QUOTE = '"';
+        public const char SINGLE_QUOTE = '\'';
 
-        public StringReader(string str)
-        {
-            String = str;
-        }
+        public abstract long Cursor { get; protected set; }
+        public abstract bool CanRead(int length = 1);
+        public abstract char Peek(int offset);
+        public virtual char Peek() => Peek(0);
+        public abstract char Read();
 
         public static bool IsQuote(char c)
         {
@@ -31,23 +31,6 @@ namespace TryashtarUtils.Nbt
                 || c == '∞';
         }
 
-        public bool CanRead(int length = 1)
-        {
-            return Cursor + length <= String.Length;
-        }
-
-        public char Peek(int offset = 0)
-        {
-            return String[Cursor + offset];
-        }
-
-        public char Read()
-        {
-            char result = Peek();
-            Cursor++;
-            return result;
-        }
-
         public string ReadString()
         {
             if (!CanRead())
@@ -59,6 +42,27 @@ namespace TryashtarUtils.Nbt
                 return ReadStringUntil(next);
             }
             return ReadUnquotedString();
+        }
+
+        private char ParseUnicode()
+        {
+            var chars = new char[] { Read(), Read(), Read(), Read() };
+            int value = 0;
+            for (int i = 0; i < chars.Length; i++)
+            {
+                char ch = chars[i];
+                int chValue;
+                if (ch <= 57 && ch >= 48)
+                    chValue = ch - 48;
+                else if (ch <= 70 && ch >= 65)
+                    chValue = ch - 55;
+                else if (ch <= 102 && ch >= 97)
+                    chValue = ch - 87;
+                else
+                    throw new FormatException($"Invalid unicode escape sequence: \\u{chars[0]}{chars[1]}{chars[2]}{chars[3]}");
+                value += chValue << ((3 - i) * 4);
+            }
+            return Convert.ToChar(value);
         }
 
         public string ReadStringUntil(char end)
@@ -80,6 +84,11 @@ namespace TryashtarUtils.Nbt
                         result.Append('\n');
                         escaped = false;
                     }
+                    else if (c == 'u')
+                    {
+                        result.Append(ParseUnicode());
+                        escaped = false;
+                    }
                     else
                     {
                         Cursor--;
@@ -96,14 +105,19 @@ namespace TryashtarUtils.Nbt
             throw new FormatException($"Expected the string to end with '{end}', but reached end of data");
         }
 
+        public string ReadWhile(Predicate<char> condition)
+        {
+            var builder = new StringBuilder();
+            while (CanRead() && condition(Peek()))
+            {
+                builder.Append(Read());
+            }
+            return builder.ToString();
+        }
+
         public string ReadUnquotedString()
         {
-            int start = Cursor;
-            while (CanRead() && UnquotedAllowed(Peek()))
-            {
-                Read();
-            }
-            return String[start..Cursor];
+            return ReadWhile(UnquotedAllowed);
         }
 
         public string ReadQuotedString()
@@ -119,12 +133,13 @@ namespace TryashtarUtils.Nbt
 
         public int ReadInt()
         {
-            int start = Cursor;
+            long start = Cursor;
+            var builder = new StringBuilder();
             while (CanRead() && IsAllowedNumber(Peek()))
             {
-                Read();
+                builder.Append(Read());
             }
-            string number = String[start..Cursor];
+            string number = builder.ToString();
             if (number.Length == 0)
                 throw new FormatException($"Couldn't read any numeric characters starting at position {start}");
             return int.Parse(number);
@@ -150,6 +165,72 @@ namespace TryashtarUtils.Nbt
             char read = Read();
             if (read != c)
                 throw new FormatException($"Expected '{c}' at position {Cursor}, but got '{read}'");
+        }
+    }
+
+    public class StreamStringReader : StringReader
+    {
+        private readonly StreamReader BaseReader;
+        public override long Cursor
+        {
+            get => BaseReader.BaseStream.Position;
+            protected set => BaseReader.BaseStream.Position = value;
+        }
+
+        public StreamStringReader(StreamReader reader)
+        {
+            BaseReader = reader;
+        }
+
+        public override bool CanRead(int length = 1)
+        {
+            return BaseReader.BaseStream.Position + length >= BaseReader.BaseStream.Length;
+        }
+
+        public override char Peek()
+        {
+            return (char)BaseReader.Peek();
+        }
+
+        public override char Peek(int offset)
+        {
+            BaseReader.BaseStream.Position += offset;
+            char result = (char)BaseReader.Peek();
+            BaseReader.BaseStream.Position -= offset;
+            return result;
+        }
+
+        public override char Read()
+        {
+            return (char)BaseReader.Read();
+        }
+    }
+
+    public class DirectStringReader : StringReader
+    {
+        private readonly string DirectString;
+        public override long Cursor { get; protected set; }
+
+        public DirectStringReader(string str)
+        {
+            DirectString = str;
+        }
+
+        public override bool CanRead(int length = 1)
+        {
+            return Cursor + length <= DirectString.Length;
+        }
+
+        public override char Peek(int offset = 0)
+        {
+            return DirectString[(int)Cursor + offset];
+        }
+
+        public override char Read()
+        {
+            char result = Peek();
+            Cursor++;
+            return result;
         }
     }
 }
