@@ -15,7 +15,7 @@ namespace TryashtarUtils.Nbt
         public readonly string Original;
         public readonly NbtPathNode[] Nodes;
 
-        private NbtPath(string original, NbtPathNode[] nodes)
+        public NbtPath(string original, NbtPathNode[] nodes)
         {
             Original = original;
             Nodes = nodes;
@@ -63,6 +63,7 @@ namespace TryashtarUtils.Nbt
     public abstract class NbtPathNode
     {
         public abstract IEnumerable<NbtTag> Get(NbtTag start);
+        public static NbtPathNode Parse(string str) => Parse(new DirectStringReader(str));
         internal static NbtPathNode Parse(StringReader reader)
         {
             char c = reader.Peek();
