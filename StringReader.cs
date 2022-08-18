@@ -134,12 +134,7 @@ namespace TryashtarUtils.Nbt
         public int ReadInt()
         {
             long start = Cursor;
-            var builder = new StringBuilder();
-            while (CanRead() && IsAllowedNumber(Peek()))
-            {
-                builder.Append(Read());
-            }
-            string number = builder.ToString();
+            string number = ReadWhile(IsAllowedNumber);
             if (number.Length == 0)
                 throw new FormatException($"Couldn't read any numeric characters starting at position {start}");
             return int.Parse(number);
