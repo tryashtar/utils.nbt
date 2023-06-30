@@ -5,7 +5,6 @@ using System.Text.RegularExpressions;
 using fNbt;
 using TryashtarUtils.Utility;
 using System.Globalization;
-using System.IO;
 
 namespace TryashtarUtils.Nbt
 {
@@ -20,12 +19,7 @@ namespace TryashtarUtils.Nbt
         private static readonly Regex INT_PATTERN = new("^([-+]?(?:0|[1-9][0-9]*))$");
 
         private readonly StringReader Reader;
-
-        public static Failable<NbtTag> TryParse(string snbt, bool named)
-        {
-            return new Failable<NbtTag>(() => Parse(snbt, named), "Parse SNBT");
-        }
-
+        
         public static NbtTag Parse(string snbt, bool named)
         {
             snbt = snbt.TrimStart();
